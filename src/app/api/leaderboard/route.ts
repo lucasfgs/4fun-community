@@ -19,7 +19,7 @@ interface LeaderboardRecord {
 
 export async function GET() {
   try {
-    // Fetch users ordered by points (descending)
+    // Fetch users ordered by points (descending).
     const users: LeaderboardUser[] = await prisma.users.findMany({
       orderBy: { points: "desc" },
       select: { auth: true, name: true, points: true },
