@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-// Mapping from style number to style name based on your configuration.
+// Mapping from style number to style name.
 const styleMapping: Record<number, string> = {
   0: "Normal",
   1: "Sideways",
@@ -18,16 +18,14 @@ const styleMapping: Record<number, string> = {
   10: "TAS",
 };
 
-// The structure returned from our Prisma query.
+// The structure returned from our raw SQL query.
 interface RecordsDB {
   time: number;
   map: string;
   date: number | null;
-  auth: number | null; // Stored SteamID3 numeric part (e.g. 33834758 from "[U:1:33834758]")
-  style: number; // Numeric style value.
-  users: {
-    name: string | null;
-  } | null;
+  auth: number | null;
+  style: number;
+  name: string | null; // user's name from the join.
 }
 
 // The final shape for each record returned by the API.
@@ -39,7 +37,7 @@ interface TimeFormatted {
 interface RecordsRecord {
   player: string;
   map: string;
-  style: string; // The style name derived from the numeric style.
+  style: string; // Mapped style name.
   time: TimeFormatted;
   diff: TimeFormatted | null;
   profileUrl: string | null; // Steam profile URL built from SteamID64.
@@ -69,8 +67,8 @@ function formatTime(seconds: number): TimeFormatted {
   return { main, fraction: fractionStr };
 }
 
-// Helper function to convert a SteamID3 numeric value to SteamID64.
-// The conversion formula is: SteamID64 = 76561197960265728 + auth
+// Helper function to convert a SteamID3 numeric value to a Steam profile URL.
+// Conversion formula: SteamID64 = 76561197960265728 + auth
 function steamId3ToProfileUrl(auth: number): string {
   const steamId64 = BigInt(76561197960265728) + BigInt(auth);
   return `https://steamcommunity.com/profiles/${steamId64.toString()}`;
@@ -78,21 +76,26 @@ function steamId3ToProfileUrl(auth: number): string {
 
 export async function GET() {
   try {
-    // Query playertimes (joined with users) ordered by the most recent 'date'
-    const recordsData: RecordsDB[] = await prisma.playertimes.findMany({
-      orderBy: { date: "desc" },
-      take: 20, // Adjust the number of records returned as needed.
-      select: {
-        time: true,
-        map: true,
-        date: true,
-        auth: true,
-        style: true,
-        users: { select: { name: true } },
-      },
-    });
+    // Raw SQL query to aggregate by map and style (i.e., fastest record per combination).
+    const recordsData: RecordsDB[] = await prisma.$queryRaw`
+      SELECT pt.time, pt.map, pt.date, pt.auth, pt.style, u.name
+      FROM playertimes pt
+      LEFT JOIN users u ON pt.auth = u.auth
+      INNER JOIN (
+        SELECT map, style, MIN(time) AS min_time
+        FROM playertimes
+        GROUP BY map, style
+      ) sub ON pt.map = sub.map 
+           AND pt.style = sub.style 
+           AND pt.time = sub.min_time
+      ORDER BY pt.date DESC
+      LIMIT 20;
+    `;
 
-    // Map the data: compute the diff, build the image URL, the profile URL, and map the style.
+    // Map the raw data to our final shape.
+    // Here, the diff is calculated as the absolute difference from the previous record
+    // in the aggregated list. Note: Since each record is a different (map, style) combination,
+    // the diff might not be directly comparable between maps.
     const records: RecordsRecord[] = recordsData.map((record, index, arr) => {
       const diffSeconds =
         index === 0 ? null : Math.abs(record.time - arr[index - 1].time);
@@ -100,7 +103,7 @@ export async function GET() {
         record.auth !== null ? steamId3ToProfileUrl(record.auth) : null;
       const imageUrl = `https://kawaiiclan.com/sourcebans/images/maps/${record.map}.jpg`;
       return {
-        player: record.users?.name || "Anonymous",
+        player: record.name || "Anonymous",
         map: record.map,
         style: styleMapping[record.style] || "Unknown",
         time: formatTime(record.time),

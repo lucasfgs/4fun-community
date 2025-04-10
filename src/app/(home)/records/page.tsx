@@ -84,7 +84,7 @@ export default function RecordsPage() {
             {records.map((record, index) => (
               <tr
                 key={index}
-                className="relative block rounded-lg w-full hover:brightness-110 cursor-pointer"
+                className="relative block rounded-lg w-full hover:brightness-110"
                 style={{
                   // Set two backgrounds: the primary map image and a fallback image.
                   backgroundImage: `url(${record.imageUrl}), url("/map-not-found.png")`,
