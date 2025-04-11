@@ -1,7 +1,7 @@
-"use client";
+// File: src/app/records/page.tsx
+// (No "use client" directive is needed; this is a server component.)
 
-import { useEffect, useState } from "react";
-
+// Type definitions for our record data.
 interface TimeFormatted {
   main: string;
   fraction: string;
@@ -17,76 +17,28 @@ interface RecordItem {
   style?: string;
 }
 
-export default function RecordsPage() {
-  const [records, setRecords] = useState<RecordItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+// Our helper functions remain the same, but note that
+// in this component we are only fetching data from our API,
+// which has already performed all the mapping.
 
-  useEffect(() => {
-    async function fetchRecords() {
-      try {
-        const response = await fetch("/api/records");
-        if (!response.ok) {
-          throw new Error("Error fetching records.");
-        }
-        const data: RecordItem[] = await response.json();
-        setRecords(data);
-      } catch (err: any) {
-        setError(err.message || "Unexpected error");
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchRecords();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <p className="text-white">Loading...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <p className="text-red-500">Error: {error}</p>
-      </div>
-    );
-  }
+export default async function RecordsPage() {
+  // Fetch records data from our API endpoint.
+  // The use of { cache: "no-store" } ensures fresh data on each request.
+  const res = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/records`);
+  const records: RecordItem[] = await res.json();
 
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold text-white mb-6">Recent Records</h1>
       <div className="overflow-x-auto">
         <table className="min-w-full">
-          {/* <thead className="bg-gray-800">
-            <tr>
-              <th className="px-6 py-3 w-1/5 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">
-                Player
-              </th>
-              <th className="px-6 py-3  w-1/5 text-center text-xs font-medium text-gray-200 uppercase tracking-wider">
-                Map
-              </th>
-              <th className="px-6 py-3  w-1/5 text-right text-xs font-medium text-gray-200 uppercase tracking-wider">
-                Time
-              </th>
-              <th className="px-6 py-3  w-1/5 text-right text-xs font-medium text-gray-200 uppercase tracking-wider">
-                Style
-              </th>
-              <th className="px-6 py-3  w-1/5 text-right text-xs font-medium text-gray-200 uppercase tracking-wider">
-                Difference
-              </th>
-            </tr>
-          </thead> */}
           <tbody className="space-y-1">
             {records.map((record, index) => (
               <tr
                 key={index}
                 className="relative block rounded-lg w-full hover:brightness-110"
                 style={{
-                  // Set two backgrounds: the primary map image and a fallback image.
+                  // Use two background images: the primary map image and a fallback.
                   backgroundImage: `url(${record.imageUrl}), url("/map-not-found.png")`,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
@@ -115,9 +67,9 @@ export default function RecordsPage() {
                         )}
                       </div>
 
-                      {/* Style Column */}
+                      {/* Map Column (displaying the map name) */}
                       <div className="w-1/5 text-center text-gray-100">
-                        {record.map}
+                        <span className="font-semibold">{record.map}</span>
                       </div>
 
                       {/* Time Column */}
@@ -133,7 +85,7 @@ export default function RecordsPage() {
                         {record.style}
                       </div>
 
-                      {/* Diff Column */}
+                      {/* Difference Column */}
                       <div
                         className={`w-1/5 text-right text-green-400 ${
                           !record.diff && "text-center"
@@ -141,7 +93,7 @@ export default function RecordsPage() {
                       >
                         {record.diff ? (
                           <>
-                            -{record.diff.main}
+                            - {record.diff.main}
                             <span className="opacity-70">
                               {record.diff.fraction}
                             </span>
