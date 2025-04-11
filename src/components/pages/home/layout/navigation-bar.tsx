@@ -21,7 +21,7 @@ export function NavigationBar() {
           <ul className="flex space-x-6">
             <li>
               <Link
-                href="/leaderboard"
+                href="/"
                 className="relative group transition-colors duration-200 hover:text-gray-400"
               >
                 Leaderboard

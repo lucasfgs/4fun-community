@@ -1,6 +1,3 @@
-// File: src/app/records/page.tsx
-// (No "use client" directive is needed; this is a server component.)
-
 // Type definitions for our record data.
 interface TimeFormatted {
   main: string;
@@ -17,13 +14,8 @@ interface RecordItem {
   style?: string;
 }
 
-// Our helper functions remain the same, but note that
-// in this component we are only fetching data from our API,
-// which has already performed all the mapping.
-
 export default async function RecordsPage() {
   // Fetch records data from our API endpoint.
-  // The use of { cache: "no-store" } ensures fresh data on each request.
   const res = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/records`);
   const records: RecordItem[] = await res.json();
 

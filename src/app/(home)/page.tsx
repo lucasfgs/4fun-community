@@ -1,52 +1,23 @@
-"use client";
-
-import { useEffect, useState } from "react";
-
 interface LeaderboardRecord {
   rank: number;
   player: string;
   points: number;
 }
 
-export default function LeaderboardsPage() {
-  const [leaderboard, setLeaderboard] = useState<LeaderboardRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function fetchLeaderboard() {
-      try {
-        const response = await fetch("/api/leaderboard");
-        if (!response.ok) {
-          throw new Error("Error fetching leaderboard data");
-        }
-        const data = await response.json();
-        setLeaderboard(data);
-      } catch (err: any) {
-        setError(err.message || "Unexpected error");
-      } finally {
-        setLoading(false);
-      }
+export default async function LeaderboardsPage() {
+  // Using a relative URL works correctly for internal API routes in SSR.
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_SITE_URL}/api/leaderboard`,
+    {
+      cache: "no-store",
     }
+  );
 
-    fetchLeaderboard();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <p className="text-white">Loading...</p>
-      </div>
-    );
+  if (!res.ok) {
+    throw new Error("Failed to load leaderboard data");
   }
 
-  if (error) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <p className="text-red-500">Error: {error}</p>
-      </div>
-    );
-  }
+  const leaderboard: LeaderboardRecord[] = await res.json();
 
   return (
     <div className="container mx-auto px-4 py-8">
